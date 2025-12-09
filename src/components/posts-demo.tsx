@@ -1,7 +1,17 @@
 "use client";
 
+import {
+  createPost,
+  getPosts,
+  updatePost,
+  deletePost,
+  patchPost,
+  getComments,
+  getTodo,
+  Post,
+  Comment,
+} from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createPost, getPosts, updatePost, deletePost, Post } from "@/lib/api";
 import { useState } from "react";
 
 export default function PostsDemo() {
@@ -9,6 +19,13 @@ export default function PostsDemo() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
+
+  // Todo Demo
+  const { data: todo } = useQuery({
+    queryKey: ["todo", 1],
+    queryFn: () => getTodo(1),
+  });
 
   // Example UseQuery: Fetching data
   const {
@@ -25,7 +42,6 @@ export default function PostsDemo() {
   const createPostMutation = useMutation({
     mutationFn: createPost,
     onSuccess: (newPost) => {
-      // Mock update cache
       queryClient.setQueryData(["posts"], (old: Post[] = []) => [
         newPost,
         ...old,
@@ -39,7 +55,6 @@ export default function PostsDemo() {
   const updatePostMutation = useMutation({
     mutationFn: updatePost,
     onSuccess: (updatedPost) => {
-      // Mock update cache
       queryClient.setQueryData(["posts"], (old: Post[] = []) =>
         old.map((p) => (p.id === updatedPost.id ? updatedPost : p))
       );
@@ -52,11 +67,22 @@ export default function PostsDemo() {
   const deletePostMutation = useMutation({
     mutationFn: deletePost,
     onSuccess: (_, deletedId) => {
-      // Mock update cache
       queryClient.setQueryData(["posts"], (old: Post[] = []) =>
         old.filter((p) => p.id !== deletedId)
       );
       alert("Post deleted successfully! (Mocked)");
+    },
+  });
+
+  // Example UseMutation: Patching data (Mock "Mark as Read" or similar partial update)
+  const patchPostMutation = useMutation({
+    mutationFn: (variables: { id: number; updates: Partial<Post> }) =>
+      patchPost(variables.id, variables.updates),
+    onSuccess: (patchedPost) => {
+      queryClient.setQueryData(["posts"], (old: Post[] = []) =>
+        old.map((p) => (p.id === patchedPost.id ? { ...p, ...patchedPost } : p))
+      );
+      //   alert('Post patched successfully! (Mocked)');
     },
   });
 
@@ -86,6 +112,14 @@ export default function PostsDemo() {
     if (confirm("Are you sure you want to delete this post?")) {
       deletePostMutation.mutate(id);
     }
+  };
+
+  const handlePatch = (post: Post) => {
+    // Demo: Append " [Patched]" to title
+    patchPostMutation.mutate({
+      id: post.id,
+      updates: { title: `${post.title} [Patched]` },
+    });
   };
 
   if (isLoading) return <div className="p-4">Loading posts...</div>;
@@ -153,43 +187,118 @@ export default function PostsDemo() {
         </form>
       </div>
 
+      <div className="p-4 border rounded-lg bg-muted/20">
+        <h2 className="text-xl font-bold mb-2">Todo Demo (Fetch ID: 1)</h2>
+        {todo ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              readOnly
+              className="h-4 w-4"
+            />
+            <span
+              className={
+                todo.completed ? "line-through text-muted-foreground" : ""
+              }
+            >
+              {todo.title}
+            </span>
+          </div>
+        ) : (
+          <div>Loading todo...</div>
+        )}
+      </div>
+
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">
-          Posts (Query, Update, Delete Demo)
-        </h2>
+        <h2 className="text-2xl font-bold">Posts (All Endpoints Demo)</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {posts?.slice(0, 10).map((post) => (
             <div
               key={post.id}
               className="p-4 border rounded-lg hover:shadow-md transition-shadow flex flex-col"
             >
-              <h3 className="font-semibold text-lg mb-2 truncate">
+              <h3
+                className="font-semibold text-lg mb-2 truncate"
+                title={post.title}
+              >
                 {post.title}
               </h3>
               <p className="text-muted-foreground text-sm line-clamp-3 mb-4 flex-grow">
                 {post.body}
               </p>
-              <div className="flex gap-2 mt-auto pt-2 border-t">
+
+              <div className="flex flex-wrap gap-2 mt-auto pt-2 border-t">
                 <button
                   onClick={() => handleEdit(post)}
-                  className="px-3 py-1 text-sm bg-secondary text-secondary-foreground rounded hover:opacity-90"
+                  className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:opacity-90"
                 >
-                  Edit
+                  Edit (PUT)
+                </button>
+                <button
+                  onClick={() => handlePatch(post)}
+                  className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:opacity-90 dark:bg-blue-900 dark:text-blue-100"
+                  disabled={patchPostMutation.isPending}
+                >
+                  {patchPostMutation.isPending ? "..." : "Patch"}
                 </button>
                 <button
                   onClick={() => handleDelete(post.id)}
-                  className="px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded hover:opacity-90"
+                  className="px-2 py-1 text-xs bg-destructive text-destructive-foreground rounded hover:opacity-90"
                 >
                   Delete
                 </button>
+                <button
+                  onClick={() =>
+                    setExpandedPostId(
+                      expandedPostId === post.id ? null : post.id
+                    )
+                  }
+                  className="px-2 py-1 text-xs border rounded hover:bg-muted ml-auto"
+                >
+                  {expandedPostId === post.id ? "Hide Comments" : "Comments"}
+                </button>
               </div>
+
+              {expandedPostId === post.id && (
+                <CommentsSection postId={post.id} />
+              )}
             </div>
           ))}
         </div>
         <p className="text-sm text-muted-foreground mt-4">
-          Showing top 10 posts for brevity.
+          Showing top 10 posts.
         </p>
       </div>
+    </div>
+  );
+}
+
+function CommentsSection({ postId }: { postId: number }) {
+  const {
+    data: comments,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["comments", postId],
+    queryFn: () => getComments(postId),
+  });
+
+  if (isLoading) return <div className="mt-2 text-xs">Loading comments...</div>;
+  if (isError)
+    return (
+      <div className="mt-2 text-xs text-red-500">Failed to load comments</div>
+    );
+
+  return (
+    <div className="mt-3 p-3 bg-muted/50 rounded text-xs space-y-2 max-h-48 overflow-y-auto">
+      <h4 className="font-semibold mb-1">Comments:</h4>
+      {comments?.map((comment) => (
+        <div key={comment.id} className="border-b last:border-0 pb-1">
+          <p className="font-medium truncate">{comment.email}</p>
+          <p className="text-muted-foreground">{comment.body}</p>
+        </div>
+      ))}
     </div>
   );
 }

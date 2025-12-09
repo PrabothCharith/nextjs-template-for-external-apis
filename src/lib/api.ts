@@ -60,3 +60,58 @@ export async function deletePost(id: number): Promise<void> {
     throw new Error('Failed to delete post');
   }
 }
+
+export async function getPost(id: number): Promise<Post> {
+  const response = await fetch(`${API_URL}/posts/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch post');
+  }
+  return response.json();
+}
+
+export interface Comment {
+  postId: number;
+  id: number;
+  name: string;
+  email: string;
+  body: string;
+}
+
+export async function getComments(postId: number): Promise<Comment[]> {
+  const response = await fetch(`${API_URL}/posts/${postId}/comments`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch comments');
+  }
+  return response.json();
+}
+
+export async function patchPost(id: number, updates: Partial<Post>): Promise<Post> {
+  const response = await fetch(`${API_URL}/posts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+    headers: {
+      'Content-type': 'application/json; charset=UTF-8',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to patch post');
+  }
+
+  return response.json();
+}
+
+export interface Todo {
+  userId: number;
+  id: number;
+  title: string;
+  completed: boolean;
+}
+
+export async function getTodo(id: number): Promise<Todo> {
+  const response = await fetch(`${API_URL}/todos/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch todo');
+  }
+  return response.json();
+}
