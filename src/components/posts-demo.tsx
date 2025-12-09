@@ -9,10 +9,23 @@ import {
   getComments,
   getTodo,
   Post,
-  Comment,
 } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  CardFooter,
+  Button,
+  Input,
+  Textarea,
+  Checkbox,
+  Skeleton,
+  Chip,
+  Divider,
+  ScrollShadow,
+} from "@heroui/react";
 
 export default function PostsDemo() {
   const queryClient = useQueryClient();
@@ -22,7 +35,7 @@ export default function PostsDemo() {
   const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
 
   // Todo Demo
-  const { data: todo } = useQuery({
+  const { data: todo, isLoading: isTodoLoading } = useQuery({
     queryKey: ["todo", 1],
     queryFn: () => getTodo(1),
   });
@@ -30,7 +43,7 @@ export default function PostsDemo() {
   // Example UseQuery: Fetching data
   const {
     data: posts,
-    isLoading,
+    isLoading: isPostsLoading,
     isError,
     error,
   } = useQuery({
@@ -47,7 +60,6 @@ export default function PostsDemo() {
         ...old,
       ]);
       resetForm();
-      alert("Post created successfully! (Mocked)");
     },
   });
 
@@ -59,7 +71,6 @@ export default function PostsDemo() {
         old.map((p) => (p.id === updatedPost.id ? updatedPost : p))
       );
       resetForm();
-      alert("Post updated successfully! (Mocked)");
     },
   });
 
@@ -70,7 +81,6 @@ export default function PostsDemo() {
       queryClient.setQueryData(["posts"], (old: Post[] = []) =>
         old.filter((p) => p.id !== deletedId)
       );
-      alert("Post deleted successfully! (Mocked)");
     },
   });
 
@@ -82,7 +92,6 @@ export default function PostsDemo() {
       queryClient.setQueryData(["posts"], (old: Post[] = []) =>
         old.map((p) => (p.id === patchedPost.id ? { ...p, ...patchedPost } : p))
       );
-      //   alert('Post patched successfully! (Mocked)');
     },
   });
 
@@ -122,155 +131,215 @@ export default function PostsDemo() {
     });
   };
 
-  if (isLoading) return <div className="p-4">Loading posts...</div>;
-  if (isError)
-    return <div className="p-4 text-red-500">Error: {error.message}</div>;
-
   return (
-    <div className="space-y-8">
-      <div className="p-6 bg-card border rounded-lg shadow-sm">
-        <h2 className="text-2xl font-bold mb-4">
-          {editingPost ? "Edit Post (PUT Demo)" : "Create Post (POST Demo)"}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium mb-1">
-              Title
-            </label>
-            <input
-              id="title"
-              type="text"
-              className="w-full p-2 border rounded-md bg-background"
+    <div className="space-y-8 max-w-5xl mx-auto p-4">
+      {/* Todo Section */}
+      <Card className="max-w-[400px]">
+        <CardHeader className="flex gap-3">
+          <h2 className="text-xl font-bold">Todo Demo (Fetch ID: 1)</h2>
+        </CardHeader>
+        <Divider />
+        <CardBody>
+          {isTodoLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="w-3/5 rounded-lg">
+                <div className="h-3 w-3/5 rounded-lg bg-default-200"></div>
+              </Skeleton>
+            </div>
+          ) : todo ? (
+            <div className="flex items-center gap-2">
+              <Checkbox isSelected={todo.completed} isReadOnly>
+                <span
+                  className={
+                    todo.completed ? "line-through text-default-500" : ""
+                  }
+                >
+                  {todo.title}
+                </span>
+              </Checkbox>
+            </div>
+          ) : (
+            <div>Failed to load todo.</div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Form Section */}
+      <Card>
+        <CardHeader>
+          <h2 className="text-2xl font-bold">
+            {editingPost ? "Edit Post (PUT Demo)" : "Create Post (POST Demo)"}
+          </h2>
+        </CardHeader>
+        <CardBody>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <Input
+              label="Title"
+              placeholder="Enter post title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              required
+              isRequired
+              variant="bordered"
             />
-          </div>
-          <div>
-            <label htmlFor="body" className="block text-sm font-medium mb-1">
-              Body
-            </label>
-            <textarea
-              id="body"
-              className="w-full p-2 border rounded-md bg-background"
+            <Textarea
+              label="Body"
+              placeholder="Enter post content"
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              required
+              isRequired
+              variant="bordered"
             />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={
-                createPostMutation.isPending || updatePostMutation.isPending
-              }
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 disabled:opacity-50"
-            >
-              {editingPost
-                ? updatePostMutation.isPending
-                  ? "Updating..."
-                  : "Update Post"
-                : createPostMutation.isPending
-                ? "Creating..."
-                : "Create Post"}
-            </button>
-            {editingPost && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-4 py-2 border rounded-md hover:bg-muted"
+            <div className="flex gap-2 justify-end">
+              {editingPost && (
+                <Button
+                  type="button"
+                  variant="flat"
+                  color="danger"
+                  onPress={resetForm}
+                >
+                  Cancel
+                </Button>
+              )}
+              <Button
+                type="submit"
+                color="primary"
+                isLoading={
+                  createPostMutation.isPending || updatePostMutation.isPending
+                }
               >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
+                {editingPost
+                  ? updatePostMutation.isPending
+                    ? "Updating..."
+                    : "Update Post"
+                  : createPostMutation.isPending
+                  ? "Creating..."
+                  : "Create Post"}
+              </Button>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
 
-      <div className="p-4 border rounded-lg bg-muted/20">
-        <h2 className="text-xl font-bold mb-2">Todo Demo (Fetch ID: 1)</h2>
-        {todo ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={todo.completed}
-              readOnly
-              className="h-4 w-4"
-            />
-            <span
-              className={
-                todo.completed ? "line-through text-muted-foreground" : ""
-              }
-            >
-              {todo.title}
-            </span>
-          </div>
-        ) : (
-          <div>Loading todo...</div>
-        )}
-      </div>
-
+      {/* Posts Grid Section */}
       <div className="space-y-4">
         <h2 className="text-2xl font-bold">Posts (All Endpoints Demo)</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {posts?.slice(0, 10).map((post) => (
-            <div
-              key={post.id}
-              className="p-4 border rounded-lg hover:shadow-md transition-shadow flex flex-col"
-            >
-              <h3
-                className="font-semibold text-lg mb-2 truncate"
-                title={post.title}
-              >
-                {post.title}
-              </h3>
-              <p className="text-muted-foreground text-sm line-clamp-3 mb-4 flex-grow">
-                {post.body}
-              </p>
 
-              <div className="flex flex-wrap gap-2 mt-auto pt-2 border-t">
-                <button
-                  onClick={() => handleEdit(post)}
-                  className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:opacity-90"
-                >
-                  Edit (PUT)
-                </button>
-                <button
-                  onClick={() => handlePatch(post)}
-                  className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:opacity-90 dark:bg-blue-900 dark:text-blue-100"
-                  disabled={patchPostMutation.isPending}
-                >
-                  {patchPostMutation.isPending ? "..." : "Patch"}
-                </button>
-                <button
-                  onClick={() => handleDelete(post.id)}
-                  className="px-2 py-1 text-xs bg-destructive text-destructive-foreground rounded hover:opacity-90"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() =>
-                    setExpandedPostId(
-                      expandedPostId === post.id ? null : post.id
-                    )
-                  }
-                  className="px-2 py-1 text-xs border rounded hover:bg-muted ml-auto"
-                >
-                  {expandedPostId === post.id ? "Hide Comments" : "Comments"}
-                </button>
-              </div>
-
-              {expandedPostId === post.id && (
-                <CommentsSection postId={post.id} />
-              )}
-            </div>
-          ))}
-        </div>
-        <p className="text-sm text-muted-foreground mt-4">
-          Showing top 10 posts.
-        </p>
+        {isPostsLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="p-4 space-y-5" radius="lg">
+                <Skeleton className="rounded-lg">
+                  <div className="h-24 rounded-lg bg-default-300"></div>
+                </Skeleton>
+                <div className="space-y-3">
+                  <Skeleton className="w-3/5 rounded-lg">
+                    <div className="h-3 w-3/5 rounded-lg bg-default-200"></div>
+                  </Skeleton>
+                  <Skeleton className="w-4/5 rounded-lg">
+                    <div className="h-3 w-4/5 rounded-lg bg-default-200"></div>
+                  </Skeleton>
+                  <Skeleton className="w-2/5 rounded-lg">
+                    <div className="h-3 w-2/5 rounded-lg bg-default-300"></div>
+                  </Skeleton>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="text-danger">Error: {error.message}</div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {posts?.slice(0, 10).map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+                handlePatch={handlePatch}
+                patchIsPending={
+                  patchPostMutation.isPending &&
+                  patchPostMutation.variables?.id === post.id
+                }
+                expandedPostId={expandedPostId}
+                setExpandedPostId={setExpandedPostId}
+              />
+            ))}
+          </div>
+        )}
+        <p className="text-sm text-default-500 mt-4">Showing top 10 posts.</p>
       </div>
     </div>
+  );
+}
+
+function PostCard({
+  post,
+  handleEdit,
+  handleDelete,
+  handlePatch,
+  patchIsPending,
+  expandedPostId,
+  setExpandedPostId,
+}: any) {
+  return (
+    <Card className="flex flex-col h-full">
+      <CardHeader className="justify-between items-start">
+        <h3 className="font-semibold text-lg line-clamp-1" title={post.title}>
+          {post.title}
+        </h3>
+        {post.title.includes("[Patched]") && (
+          <Chip color="success" size="sm" variant="flat">
+            Patched
+          </Chip>
+        )}
+      </CardHeader>
+      <CardBody className="py-2">
+        <p className="text-default-500 text-sm line-clamp-3">{post.body}</p>
+        {expandedPostId === post.id && (
+          <div className="mt-4">
+            <Divider className="my-2" />
+            <CommentsSection postId={post.id} />
+          </div>
+        )}
+      </CardBody>
+      <CardFooter className="pt-2 gap-2 flex-wrap">
+        <Button
+          size="sm"
+          variant="flat"
+          color="secondary"
+          onPress={() => handleEdit(post)}
+        >
+          Edit
+        </Button>
+        <Button
+          size="sm"
+          variant="flat"
+          color="primary"
+          onPress={() => handlePatch(post)}
+          isLoading={patchIsPending}
+        >
+          Patch
+        </Button>
+        <Button
+          size="sm"
+          variant="flat"
+          color="danger"
+          onPress={() => handleDelete(post.id)}
+        >
+          Delete
+        </Button>
+        <Button
+          size="sm"
+          variant="light"
+          className="ml-auto"
+          onPress={() =>
+            setExpandedPostId(expandedPostId === post.id ? null : post.id)
+          }
+        >
+          {expandedPostId === post.id ? "Hide Comments" : "Comments"}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -284,21 +353,30 @@ function CommentsSection({ postId }: { postId: number }) {
     queryFn: () => getComments(postId),
   });
 
-  if (isLoading) return <div className="mt-2 text-xs">Loading comments...</div>;
-  if (isError)
+  if (isLoading)
     return (
-      <div className="mt-2 text-xs text-red-500">Failed to load comments</div>
+      <div className="space-y-2">
+        <Skeleton className="w-full rounded-lg h-8" />
+        <Skeleton className="w-full rounded-lg h-8" />
+      </div>
     );
 
+  if (isError)
+    return <div className="text-xs text-danger">Failed to load comments</div>;
+
   return (
-    <div className="mt-3 p-3 bg-muted/50 rounded text-xs space-y-2 max-h-48 overflow-y-auto">
-      <h4 className="font-semibold mb-1">Comments:</h4>
-      {comments?.map((comment) => (
-        <div key={comment.id} className="border-b last:border-0 pb-1">
-          <p className="font-medium truncate">{comment.email}</p>
-          <p className="text-muted-foreground">{comment.body}</p>
-        </div>
-      ))}
-    </div>
+    <ScrollShadow className="h-[150px]">
+      <div className="space-y-2">
+        {comments?.map((comment) => (
+          <div
+            key={comment.id}
+            className="text-xs p-2 bg-default-100 rounded-md"
+          >
+            <p className="font-semibold">{comment.email}</p>
+            <p className="text-default-500">{comment.body}</p>
+          </div>
+        ))}
+      </div>
+    </ScrollShadow>
   );
 }
