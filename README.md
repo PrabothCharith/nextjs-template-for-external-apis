@@ -20,6 +20,17 @@ If you need a full-stack solution with a database, use our [Next.js Full-Stack T
   - Dark/Light theme with `next-themes`.
   - Framer Motion for animations.
 
+## Table of Contents
+
+- [Features](#features)
+- [Getting Started](#getting-started)
+  - [Installation](#1-installation)
+  - [Run Development Server](#2-run-development-server)
+- [Included Examples](#included-examples)
+- [Cleanup Script](#-removing-examples-cleanup-script)
+- [Project Structure](#project-structure)
+- [Data Fetching Pattern](#data-fetching-pattern)
+
 ---
 
 ## Getting Started
