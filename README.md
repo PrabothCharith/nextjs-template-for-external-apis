@@ -1,104 +1,142 @@
 # Next.js Template for External APIs
 
-This is a minimal Next.js 15 template for building dynamic web applications that fetch data from a separate backend (external API). It is frontend-focused, with no database or direct API endpoint logic included—just fetch your data from your own backend or API.
+This is a minimal **frontend-focused** Next.js 15 template designed for building dynamic web applications that fetch data from **external APIs**.
+
+> [!IMPORTANT]
+> **No Backend Logic**: This template does **not** include a database, Prisma, or internal API routes (`app/api`). It is strictly for consuming existing external backends.
+
+If you need a full-stack solution with a database, use our [Next.js Full-Stack Template](https://github.com/PrabothCharith/nextjs-template-fullstack).
 
 ## Features
 
 - **Next.js 15** (App Router, TypeScript, React 19)
-- **TanStack Query (React Query)** for all async data fetching
-- **React Query DevTools** for debugging
-- **Tailwind CSS 4** for utility-first styling
-- **HeroUI** and **Shadcn/ui** for UI components (see their docs for design details)
-- **Dark/Light theme** with `next-themes`
-- **Framer Motion** for animation
-- **Lucide React** for icons
+- **TanStack Query (React Query)**: Pre-configured for robust async data fetching.
+- **Tailwind CSS 4**: For utility-first styling.
+- **UI Components**:
+  - **HeroUI**: For modern, accessible components.
+  - **Shadcn/ui**: For copy-paste tailored components.
+  - **Lucide React**: For icons.
+- **Design System**:
+  - Dark/Light theme with `next-themes`.
+  - Framer Motion for animations.
 
+---
 
-> [!NOTE]
-> If you want more details about the Design. Please refer our base project [Next.js Template Static](https://github.com/PrabothCharith/nextjs-template-static)
+## Getting Started
 
+### 1. Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/PrabothCharith/nextjs-template-for-external-APIs.git
+cd nextjs-template-for-external-APIs
+
+# Install dependencies
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+### 2. Run Development Server
+
+```bash
+npm run dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000) to see the app.
+
+---
+
+## Included Examples
+
+We have included a few examples to help you get started with **TanStack Query** and the UI components. You can explore them in the code:
+
+1. **`src/app/posts/`**:
+    - A full CRUD example interacting with [JSONPlaceholder](https://jsonplaceholder.typicode.com/).
+    - Demonstrates `useQuery` for fetching and `useMutation` for creating, updating, and deleting data.
+2. **`src/components/posts-demo.tsx`**:
+    - The main component containing the UI and logic for the Posts CRUD demo.
+    - Shows how to handle loading states, optimistic updates, and error handling.
+3. **`src/lib/api.ts`**:
+    - A strongly-typed API client wrapper for fetching data.
+    - Good practice for centralizing your API calls.
+4. **`src/app/page.tsx`**:
+    - The landing page, currently displaying the demo.
+
+### 🧹 Removing Examples (Cleanup Script)
+
+Once you have explored the examples and are ready to build your own app, you can **automatically remove** all the demo code with a single command.
+
+**This will delete:**
+
+- `src/app/posts/`
+- `src/components/posts-demo.tsx`
+- `src/lib/api.ts`
+- And reset `src/app/page.tsx` to a simple "Hello World" state.
+
+**Run:**
+
+```bash
+npm run cleanup
+```
 
 > [!WARNING]
-> This template does not include any backend or API logic. If you need a full-stack solution, use our [Next.js Full-Stack Template](https://github.com/PrabothCharith/nextjs-template-fullstack)
+> This action is irreversible. Make sure you don't need the example code before running this!
 
+---
 
 ## Project Structure
 
 ```
 src/
   app/
-    globals.css       # Global styles and Tailwind imports
+    globals.css       # Global styles
     layout.tsx        # Root layout with providers
-    page.tsx          # Home page
+    page.tsx          # Home page (will be reset by cleanup)
+    posts/            # [DELETE ON CLEANUP] Example pages
   components/
-    ui/
-      drawer.tsx      # Shadcn/ui drawer component
+    ui/               # Shadcn/ui components
+    posts-demo.tsx    # [DELETE ON CLEANUP] Example component
   lib/
-    utils.ts          # Utility functions (cn helper)
+    utils.ts          # Utility functions
+    api.ts            # [DELETE ON CLEANUP] Example API client
   providers/
-    initial.tsx       # App providers (Theme, HeroUI, TanStack Query)
-.env                  # Environment variables (for API URLs, etc.)
+    initial.tsx       # App providers (Theme, QueryClient, etc.)
+  scripts/
+    cleanup.mjs       # The cleanup script
 ```
 
+## Data Fetching Pattern
 
-## Getting Started
+We use **TanStack Query** for data fetching. Here is a quick pattern you can use in your new components:
 
-### Prerequisites
-
-- **Node.js 18+** (LTS recommended)
-- **npm**, **yarn**, or **pnpm** package manager
-
-### Installation & Setup
-
-1. Clone or Download the Template
-```bash
-# Clone the repository
-git clone https://github.com/PrabothCharith/nextjs-template-for-external-APIs.git
-```
-yarn dev
-npm run dev
-Your application should now be running with:
-
-1. **Install dependencies:**
-  ```bash
-  npm install
-  # or
-
-  # or
-  pnpm install
-  ```
-2. **Start dev server:**
-  ```bash
-  npm run dev
-  # or
-### Data Fetching with TanStack Query
-  # or
-  pnpm dev
-  ```
-3. **Open your app:**
-  Visit [http://localhost:3000](http://localhost:3000)
-
-#### Basic Query Hook
 ```typescript
-// hooks/useData.ts
-import { useQuery } from '@tanstack/react-query';
-
-interface ExampleData {
-  id: string;
-  name: string;
-  email: string;
+// 1. Define your API call in a separate file (e.g., lib/api.ts)
+export async function getUsers() {
+  const res = await fetch('https://api.example.com/users');
+  if (!res.ok) throw new Error('Failed to fetch');
+  return res.json();
 }
 
-export function useExampleData() {
-  return useQuery<ExampleData[]>({
-    queryKey: ['exampleData'],
-    queryFn: async () => {
-      const response = await fetch('https://api.example.com/data');
-      if (!response.ok) {
-        throw new Error('Failed to fetch data');
-      }
-      return response.json();
-    },
+// 2. Use the hook in your component
+import { useQuery } from '@tanstack/react-query';
+import { getUsers } from '@/lib/api';
+
+export function UserList() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers,
   });
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <ul>
+      {data.map(user => <li key={user.id}>{user.name}</li>)}
+    </ul>
+  );
 }
 ```
