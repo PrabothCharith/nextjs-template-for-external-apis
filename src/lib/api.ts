@@ -101,17 +101,4 @@ export async function patchPost(id: number, updates: Partial<Post>): Promise<Pos
   return response.json();
 }
 
-export interface Todo {
-  userId: number;
-  id: number;
-  title: string;
-  completed: boolean;
-}
 
-export async function getTodo(id: number): Promise<Todo> {
-  const response = await fetch(`${API_URL}/todos/${id}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch todo');
-  }
-  return response.json();
-}

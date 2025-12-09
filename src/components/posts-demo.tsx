@@ -7,11 +7,13 @@ import {
   deletePost,
   patchPost,
   getComments,
-  getTodo,
   Post,
 } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
+import { Moon, Sun, Laptop } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Card,
   CardHeader,
@@ -25,6 +27,16 @@ import {
   Chip,
   Divider,
   ScrollShadow,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@heroui/react";
 
 export default function PostsDemo() {
@@ -32,13 +44,22 @@ export default function PostsDemo() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [expandedPostId, setExpandedPostId] = useState<number | null>(null);
 
-  // Todo Demo
-  const { data: todo, isLoading: isTodoLoading } = useQuery({
-    queryKey: ["todo", 1],
-    queryFn: () => getTodo(1),
-  });
+  // Changed from singular ID to a Set of IDs for multiple open comments
+  const [expandedPostIds, setExpandedPostIds] = useState<Set<number>>(
+    new Set()
+  );
+
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Modal state for delete confirmation
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [postToDelete, setPostToDelete] = useState<number | null>(null);
 
   // Example UseQuery: Fetching data
   const {
@@ -81,6 +102,8 @@ export default function PostsDemo() {
       queryClient.setQueryData(["posts"], (old: Post[] = []) =>
         old.filter((p) => p.id !== deletedId)
       );
+      onOpenChange(); // Close modal on success
+      setPostToDelete(null);
     },
   });
 
@@ -117,9 +140,14 @@ export default function PostsDemo() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this post?")) {
-      deletePostMutation.mutate(id);
+  const handleDeleteClick = (id: number) => {
+    setPostToDelete(id);
+    onOpen();
+  };
+
+  const confirmDelete = () => {
+    if (postToDelete) {
+      deletePostMutation.mutate(postToDelete);
     }
   };
 
@@ -131,38 +159,60 @@ export default function PostsDemo() {
     });
   };
 
+  const toggleConstants = (id: number) => {
+    setExpandedPostIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
+
   return (
-    <div className="space-y-8 max-w-5xl mx-auto p-4">
-      {/* Todo Section */}
-      <Card className="max-w-[400px]">
-        <CardHeader className="flex gap-3">
-          <h2 className="text-xl font-bold">Todo Demo (Fetch ID: 1)</h2>
-        </CardHeader>
-        <Divider />
-        <CardBody>
-          {isTodoLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="w-3/5 rounded-lg">
-                <div className="h-3 w-3/5 rounded-lg bg-default-200"></div>
-              </Skeleton>
-            </div>
-          ) : todo ? (
-            <div className="flex items-center gap-2">
-              <Checkbox isSelected={todo.completed} isReadOnly>
-                <span
-                  className={
-                    todo.completed ? "line-through text-default-500" : ""
-                  }
-                >
-                  {todo.title}
-                </span>
-              </Checkbox>
-            </div>
-          ) : (
-            <div>Failed to load todo.</div>
-          )}
-        </CardBody>
-      </Card>
+    <div className="space-y-8">
+      {/* Theme Toggle & Header */}
+      <div className="flex justify-end mb-4">
+        <Dropdown>
+          <DropdownTrigger>
+            <Button isIconOnly variant="flat" aria-label="Theme actions">
+              {mounted ? (
+                theme === "dark" ? (
+                  <Moon size={20} />
+                ) : theme === "system" ? (
+                  <Laptop size={20} />
+                ) : (
+                  <Sun size={20} />
+                )
+              ) : (
+                <Sun size={20} />
+              )}
+            </Button>
+          </DropdownTrigger>
+          <DropdownMenu
+            aria-label="Theme selection"
+            onAction={(key) => setTheme(key as string)}
+            selectedKeys={mounted ? [theme || "system"] : ["system"]}
+            selectionMode="single"
+          >
+            <DropdownItem key="light" startContent={<Sun size={16} />}>
+              Light
+            </DropdownItem>
+            <DropdownItem key="dark" startContent={<Moon size={16} />}>
+              Dark
+            </DropdownItem>
+            <DropdownItem key="system" startContent={<Laptop size={16} />}>
+              System
+            </DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
+      </div>
 
       {/* Form Section */}
       <Card>
@@ -254,20 +304,51 @@ export default function PostsDemo() {
                 key={post.id}
                 post={post}
                 handleEdit={handleEdit}
-                handleDelete={handleDelete}
+                handleDelete={handleDeleteClick}
                 handlePatch={handlePatch}
                 patchIsPending={
                   patchPostMutation.isPending &&
                   patchPostMutation.variables?.id === post.id
                 }
-                expandedPostId={expandedPostId}
-                setExpandedPostId={setExpandedPostId}
+                isExpanded={expandedPostIds.has(post.id)}
+                toggleComments={() => toggleConstants(post.id)}
               />
             ))}
           </div>
         )}
         <p className="text-sm text-default-500 mt-4">Showing top 10 posts.</p>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                Confirm Delete
+              </ModalHeader>
+              <ModalBody>
+                <p>
+                  Are you sure you want to delete this post? This action cannot
+                  be undone.
+                </p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Cancel
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={confirmDelete}
+                  isLoading={deletePostMutation.isPending}
+                >
+                  Delete
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
@@ -278,11 +359,11 @@ function PostCard({
   handleDelete,
   handlePatch,
   patchIsPending,
-  expandedPostId,
-  setExpandedPostId,
+  isExpanded,
+  toggleComments,
 }: any) {
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col h-fit">
       <CardHeader className="justify-between items-start">
         <h3 className="font-semibold text-lg line-clamp-1" title={post.title}>
           {post.title}
@@ -295,12 +376,22 @@ function PostCard({
       </CardHeader>
       <CardBody className="py-2">
         <p className="text-default-500 text-sm line-clamp-3">{post.body}</p>
-        {expandedPostId === post.id && (
-          <div className="mt-4">
-            <Divider className="my-2" />
-            <CommentsSection postId={post.id} />
-          </div>
-        )}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4">
+                <Divider className="my-2" />
+                <CommentsSection postId={post.id} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </CardBody>
       <CardFooter className="pt-2 gap-2 flex-wrap">
         <Button
@@ -332,11 +423,9 @@ function PostCard({
           size="sm"
           variant="light"
           className="ml-auto"
-          onPress={() =>
-            setExpandedPostId(expandedPostId === post.id ? null : post.id)
-          }
+          onPress={toggleComments}
         >
-          {expandedPostId === post.id ? "Hide Comments" : "Comments"}
+          {isExpanded ? "Hide Comments" : "Comments"}
         </Button>
       </CardFooter>
     </Card>
