@@ -34,3 +34,29 @@ export async function createPost(post: Omit<Post, 'id' | 'userId'>): Promise<Pos
 
   return response.json();
 }
+
+export async function updatePost(post: Post): Promise<Post> {
+  const response = await fetch(`${API_URL}/posts/${post.id}`, {
+    method: 'PUT',
+    body: JSON.stringify(post),
+    headers: {
+      'Content-type': 'application/json; charset=UTF-8',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update post');
+  }
+
+  return response.json();
+}
+
+export async function deletePost(id: number): Promise<void> {
+  const response = await fetch(`${API_URL}/posts/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete post');
+  }
+}
