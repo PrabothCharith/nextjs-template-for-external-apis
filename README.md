@@ -76,7 +76,7 @@ We have included a few examples to help you get started with **TanStack Query** 
 4. **`src/app/page.tsx`**:
     - The landing page, currently displaying the demo.
 
-### 🧹 Removing Examples (Cleanup Script)
+### Removing Examples (Cleanup Script)
 
 Once you have explored the examples and are ready to build your own app, you can **automatically remove** all the demo code with a single command.
 
